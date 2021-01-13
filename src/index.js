@@ -1,17 +1,44 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import './index.css';
+import React from "react";
+import ReactDOM from "react-dom";
+import thunk from "redux-thunk";
+import jwt from "jsonwebtoken";
+import { Provider } from "react-redux";
+import { applyMiddleware, createStore, compose } from "redux";
+import { setCurrentUser } from "./actions";
+import setAuthToken from "./utils/SetAuthToken";
+import rootReducer from "./reducers";
+import "./index.scss";
+import "font-awesome/css/font-awesome.min.css";
 import App from './App';
-import reportWebVitals from './reportWebVitals';
 
+const middleware = applyMiddleware(thunk);
+const configureStore = (state = {}) =>
+  createStore(
+    rootReducer,
+    state,
+    compose(
+      middleware,
+      window.devToolsExtension ? window.devToolsExtension() : (f) => f
+    )
+  );
+
+const store = configureStore();
+const { localStorage } = window;
+const jwtToken = localStorage && localStorage.getItem("token");
+const decodedToken = jwt.decode(jwtToken);
+
+if (decodedToken) {
+  const hasExpired = decodedToken.exp - Date.now() / 1000 < 0;
+  if (!hasExpired) {
+    setAuthToken(jwtToken);
+    store.dispatch(setCurrentUser(jwt.decode(jwtToken)));
+  } else {
+    localStorage.removeItem("token");
+  }
+}
 ReactDOM.render(
-  <React.StrictMode>
+  <Provider store={store}>
     <App />
-  </React.StrictMode>,
-  document.getElementById('root')
+  </Provider>,
+  document.getElementById("root")
 );
-
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
